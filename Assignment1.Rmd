@@ -1,0 +1,106 @@
+---
+title: 'Assignment 1: Basic loading and transformation'
+author: "Bharani Nittala"
+date: "`r Sys.Date()`"
+output:
+  openintro::lab_report: default
+  html_document:
+    includes:
+      in_header: header.html
+    css: ./lab.css
+    highlight: pygments
+    theme: cerulean
+    toc: yes
+    toc_float: yes
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE, results = FALSE)
+library(tidyverse)
+library(openintro)
+```
+
+### Overview
+
+Nate silver (Nathaniel Read Silver) is an American statistician and writer who analyzes baseball and elections. His website fivethirtyeight.com provides plethora of datasets to munge on. Even if you are not a data person, there is a likely change that you will fall in love with the content on this site. 
+
+So, let's choose one of the topics from [five.thirtyeight.com](https://data.fivethirtyeight.com/). I chose the topic ["How popular is Donald Trump"](https://projects.fivethirtyeight.com/trump-approval-ratings/) 
+
+```{r fivethirtyeight, echo=FALSE, results="asis"}
+knitr::include_graphics("https://cdn1.thecomeback.com/wp-content/uploads/sites/94/2018/04/FiveThirtyEight-April-17-2018-832x447.jpg")
+```
+
+
+
+### Data Munging and steps involved
+### Step 1:Let's load required libraries and raw data
+
+We need tidyverse and RCurl libraries in this case. Let's load it. 
+```{r load-packages, message=FALSE}
+library(tidyverse)
+library(RCurl)
+```
+
+
+Up next is loading the csv from the github library provided in the  [five.thirtyeight.com github library](https://data.fivethirtyeight.com/).
+```{r load-data, message=FALSE}
+ approval <- getURL("https://projects.fivethirtyeight.com/trump-approval-data/approval_polllist.csv") 
+ poll_list <- read.csv(text = approval)
+```
+
+### Step 2: Learn about the data and take only what we need
+
+Dimensions of the table are:
+14,533 rows and 22 columns
+```{r dim poll_list}
+dim(poll_list)
+```
+
+
+That is lot of columns! Let's understand a bit more about the data through high level view - 
+```{r glimpse-data}
+head(poll_list,4)
+```
+
+
+
+It makes sense to get the most recent poll results (year 2020) and for the eligible voters only (the deciders)- 
+```{r recent"}
+recent_poll_list <- subset(poll_list, subgroup == "Voters" & str_sub(startdate,-4) == "2020")
+```
+
+
+Narrowing down on the number of required columns to following three- 
+
+grade, approve, disapprove
+```{r required }
+recent_poll_list_analysis <- subset(recent_poll_list,select = c(grade, approve, disapprove))
+```
+
+
+### Step 3: Exploratory analysis
+
+Let's take average of ratings by grade. 
+
+```{r average}
+Avg_rate <-aggregate(recent_poll_list_analysis[, 2:3], list(recent_poll_list_analysis$grade), mean)
+```
+
+Even if we consider the top ratings, seems like there is variation in ratings based on the credibility of the source
+Credibility \\    approve \\   disapprove <br/>
+    A     \\      42.53333  \\ 54.36667 <br/>
+    A-    \\      45.09682  \\ 51.21545 <br/>
+   A/B    \\      43.43667  \\ 51.33444 <br/>
+    A+    \\      43.63636  \\ 52.45455 <br/>
+
+
+### Conclusion
+
+Taking the approval ratings from 'A+' grade credibility sources show an average approval of 43.6%
+
+```{r Trump, echo=FALSE, results="asis"}
+knitr::include_graphics("https://nypost.com/wp-content/uploads/sites/2/2020/02/trump-gallup-56.jpg?quality=90&strip=all&w=618&h=410&crop=1")
+```
