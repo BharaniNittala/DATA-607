@@ -1,0 +1,123 @@
+---
+title: 'Assignment 2: Recommend movies. SQL & R.'
+author: "Bharani Nittala"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE, results = FALSE)
+library(tidyverse)
+library(openintro)
+```
+
+### Overview
+
+Ever wondered which movie among the Avengers (Marvel cinematic universe) has the best rating ? One may be biased to think that the most recent movie Avengers: End game is the best movie but it may not be truth. To truly evaluate the movies released over a period of time, we need ratings from the audience. [ImDb](https://https://www.imdb.com/) solves this problem. IMDb is an online database (owned by Amazon) of information related to films, television programs, home videos, video games, and streaming content online – including cast, production crew and personal biographies, plot summaries, trivia, ratings, and fan and critical reviews [ImDb Wiki:](https://en.wikipedia.org/wiki/IMDb)
+
+In snap of a finger, we can learn which movie among the Avengers is the best one. But do you know if your friends feel the same way ? Let's conduct a survey and compare the results with ImDb rating. Survey results are available [here](https://www.surveymonkey.com/r/JKC22CY) for reference.
+
+
+### Five Star rating for recent Marvel movies
+### Step 1:Let's connect to ImDb table, but wait is it possible ?
+
+Fortunately Kaggle provides the ["All Marvel Cinematic Universe Movies on IMDB"](https://www.kaggle.com/promptcloud/all-marvel-cinematic-universe-movies-on-imdb) data which we can download and load into MySQl DB.  
+
+We need RMySQL library to connect to the MySQL DB. Let's install and load them: 
+```{r load-packages, message=FALSE}
+
+library(RMySQL)
+
+```
+
+Up next, we need to connect to the MySQL DB by entering the server type and credentials
+
+```{r Connect_db, message=FALSE}
+
+mydb = dbConnect(MySQL(), user='root', password='newrootpassword', dbname='movies', host='127.0.0.1')
+
+```
+
+
+### Step 2: Importing required tables
+
+We can find the list of tables in the db with the use of the function 'dbListTables'. The tables in the schema/db are "  "imdb_rating" "movie_title" and "movies" 
+
+```{r db_list, message=FALSE}
+
+dbListTables(mydb)
+
+```
+
+Let's retrieve all the three tables from the database for our analysis. We can create three data frames through below queries: 
+
+```{r retrieving data, message=FALSE,results="asis"}
+tab1 = dbSendQuery(mydb, "select * from movies")
+survey_data = fetch(tab1)
+knitr::kable(survey_data, "simple")
+tab2 = dbSendQuery(mydb, "select * from movie_title")
+movie_title = fetch(tab2)
+knitr::kable(movie_title, "simple")
+tab3 = dbSendQuery(mydb, "select * from imdb_rating")
+imdb_rating = fetch(tab3)
+head(imdb_rating)
+```
+
+
+### Step 3: Time for analysis
+
+Let's calculate average rating for all the movies, excluding the entries where poll results were not available (marked as '0' in the data). Also, we can leverage movie_title table to obtain the movie names and understand the results better. 
+
+```{r survey_mean,results="asis"}
+survey_data_1 = replace(survey_data, survey_data==0, NA)
+survey_col <- colnames(survey_data_1)
+Survey_rating <- colMeans(survey_data_1[sapply(survey_data_1, is.numeric)],na.rm = TRUE)
+Survey_rating <- as.data.frame(Survey_rating)
+
+Survey_rating <- data.frame(Movie_Index = row.names(Survey_rating), Survey_rating)[-1,]
+
+Survey_final <- merge(x = movie_title, y = Survey_rating, by = "Movie_Index")
+
+# Leveraged round_df code from Stackoverflow https://stackoverflow.com/questions/29875914/rounding-values-in-a-dataframe-in-r
+round_df <- function(x, digits) {
+    # round all numeric variables
+    # x: data frame 
+    # digits: number of digits to round
+    numeric_columns <- sapply(x, mode) == 'numeric'
+    x[numeric_columns] <-  round(x[numeric_columns], digits)
+    x
+}
+
+Survey_final <- round_df(Survey_final,1)
+knitr::kable(Survey_final, "simple")
+```
+
+
+I wonder how my survey sample compares to broader ImDb rating, let's find out! But before we do that, there might be differences in the movie title in the survey response table compared to ImDb table. We have to run fuzzy logic to match both of them. Based on the example available on [the site here](https://rdrr.io/cran/fuzzyjoin/man/stringdist_join.html), let's merge both the datasets. 
+
+
+```{r merge_imdb, results="asis"}
+library("fuzzyjoin")
+colnames(Survey_final)[2] <- "Title" 
+Survey_comp <- stringdist_inner_join(Survey_final[ , c("Title", "Survey_rating")],imdb_rating[ , c("Title", "Review Rating")],by = "Title")[,c("Title.y","Survey_rating","Review Rating")]
+colnames(Survey_comp)[1] <- "Title" 
+knitr::kable(Survey_comp, "simple")
+```
+
+Let's bring ImDb rating to the scale of 5 to make the comparison even.
+
+```{r imdb_adjust, results="asis"}
+
+Survey_comp[3] <- Survey_comp[3]/2
+
+knitr::kable(Survey_comp, "simple")
+```
+
+
+### Conclusion
+
+Movies released prior to 2019 had similar ratings from survey sample and ImDb but movies in 2019 seem to have difference of opinion. Also, Spider-Man movie did not have any rating in the ImDb databases possibly because the ImDb dataset was outdated. We may assume that Spider-Man might be a good recommendation to broader audience as it has 3.9 star rating from the survey conducted (not bad spidey!)
+
