@@ -1,0 +1,175 @@
+---
+title: 'Assignment 3: Character Manipulation and Date Processing'
+author: "Bharani Nittala"
+date: "`r Sys.Date()`"
+output:
+  openintro::lab_report: default
+  html_document:
+    includes:
+      in_header: header.html
+    css: ./lab.css
+    highlight: pygments
+    theme: cerulean
+    toc: yes
+    toc_float: yes
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+### Overview
+
+Nate silver (Nathaniel Read Silver) is an American statistician and writer who analyzes baseball and elections. His website fivethirtyeight.com provides plethora of datasets to munge on. Even if you are not a data person, there is a likely change that you will fall in love with the content on this site. 
+
+This week's assignment is based on one of the articles on the site, "The Economic Guide To Picking A College Major." [five.thirtyeight.com](https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/). 
+
+
+### Data Munging and steps involved
+### Step 1:Let's load required libraries and raw data
+
+Step 1 is to load the csv from the github library provided in the  [five.thirtyeight.com github library](https://data.fivethirtyeight.com/) and the required R libraries. 
+```{r load-data, message=FALSE}
+knitr::opts_chunk$set(eval = TRUE, results = FALSE)
+library(tidyverse) 
+library(RCurl)
+library(stringr)
+library(knitr)
+
+major_list_url <- getURL("https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/majors-list.csv") 
+major_list <- read.csv(text = major_list_url)
+ 
+```
+
+### Step 2: Excercises
+
+
+### #1 
+Identify the majors that contain either "DATA" or "STATISTICS"
+```{r majors_identify, results="asis"}
+Data_stats_list <- major_list %>%
+  filter(str_detect(Major, 'DATA|STATISTICS'))
+kable(Data_stats_list)
+```
+
+### #2 
+Write code that transforms the data below:
+
+[1] "bell pepper"  "bilberry"     "blackberry"   "blood orange"
+
+[5] "blueberry"    "cantaloupe"   "chili pepper" "cloudberry"  
+
+[9] "elderberry"   "lime"         "lychee"       "mulberry"    
+
+[13] "olive"        "salal berry"
+
+Into a format like this:
+
+c("bell pepper", "bilberry", "blackberry", "blood orange", "blueberry", "cantaloupe", "chili pepper", "cloudberry", "elderberry", "lime", "lychee", "mulberry", "olive", "salal berry")
+
+Solution: Let's create a string variable to take the input as is
+```{r text-read, results="asis"}
+string <- '[1] "bell pepper"  "bilberry"     "blackberry"   "blood orange"
+
+[5] "blueberry"    "cantaloupe"   "chili pepper" "cloudberry"  
+
+[9] "elderberry"   "lime"         "lychee"       "mulberry"    
+
+[13] "olive"        "salal berry"'
+string
+
+
+```
+
+We see additional characters that we need to clean from the string (letters, white space, quotes)
+
+```{r text-transform,results="asis"}
+string_mod <-  unlist(str_extract_all(string, '[[:alpha:]]+\\s[[:alpha:]]+|[[:alpha:]]+'))
+string_mod
+
+```
+
+### #3
+
+Describe, in words, what these expressions will match:
+
+(.)\1\1
+
+```{r pattern detect1,results="asis"}
+test <- list("777", "anna", "2002", "aaa")
+str_view(test , '(.)\1\1', match = TRUE)
+```
+ 
+The expression does not do anything. If it is replaced with (.)\\1\\1 it will detect the characters which are repeated thrice. In this example, 777 and aaa.
+
+```{r pattern detect1_mod,results="asis"}
+test <- list("777", "anna", "2002", "aaa")
+str_view(test , '(.)\\1\\1', match = TRUE)
+```
+
+"(.)(.)\\2\\1"
+
+```{r pattern detect2,results="asis"}
+test <- list("777", "anna", "2002",  '"elle"', "12121")
+str_view(test , '"(.)(.)\\2\\1"', match = TRUE)
+```
+
+The expression identifies such cases which are 4 character palindromes which are within quotes. In this case, it returns  "elle" only. If we looked for (.)(.)\\2\\1, we would have got anna 2002 as well.
+
+(..)\1
+
+```{r pattern detect3,results="asis"}
+test <- list("777", "anna", "2002",  '"elle"', "2020","aabb")
+str_view(test , '(..)\1', match = TRUE)
+```
+
+It does not return anything. This is similar to first case. Let's try modifying it \\1
+```{r pattern detect3_mod,results="asis"}
+test <- list("777", "anna", "2002",  '"elle"', "2020","aabb")
+str_view(test , '(..)\\1', match = TRUE)
+```
+
+It gives 2020 from the selected test samples as the expression (..)\\1 identifies a set of two characters that repeat consecutively (like 2020 and not like aabb)
+
+"(.).\\1.\\1"
+
+```{r pattern detect4,results="asis"}
+test <- list("777", "anna", "2002",  '"elle"', "2020",'"12121"','"ababa"')
+str_view(test , '"(.).\\1.\\1"', match = TRUE)
+```
+
+The expression identifies five character strings like 12121 and ababa (in quotes) where first character repeats at 1st,3rd and 5th positions and second character repeats at 2nd and 4th position 
+
+
+"(.)(.)(.).*\\3\\2\\1"
+```{r pattern detect5,results="asis"}
+test <- list("777", "anna", "2002",  '"elle"', "2020",'"123321"','"abcdcba"')
+str_view(test , '"(.)(.)(.).*\\3\\2\\1"', match = TRUE)
+```
+
+The expression identifies the characters that start with two characters (same or different) and end with the same characters in reverse order. Length of the character doesn't matter. 
+
+
+### #4
+Construct regular expressions to match words that:
+
+Start and end with the same character.
+
+^(.).*\\1$
+```{r pattern gen1,results="asis"}
+test <- list("777", "anna", "2002",  '"elle"', "20201",'"123321"','"abcdcba"')
+str_view(test , '^(.).*\\1$', match = TRUE)
+```
+
+Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.)
+([A-Za-z][A-Za-z]).*\\1
+```{r pattern gen2,results="asis"}
+test <- list("777", "anna", "2002",  '"elle"', "20201",'khokho','"church"',"winwin")
+str_view(test , '([A-Za-z][A-Za-z]).*\\1', match = TRUE)
+```
+
+Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)
+([A-Za-z]).*\\1.*\\1.*
+```{r pattern gen3,results="asis"}
+test <- list("777", "miamiwinter", "tweleve",  '"ellee"', "20201",'khokho','"church"',"wisconsinite")
+str_view(test , '([A-Za-z]).*\\1.*\\1.*', match = TRUE)
+```
