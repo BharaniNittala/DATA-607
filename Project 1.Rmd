@@ -1,0 +1,183 @@
+---
+title: 'Project 1 - Data Analysis'
+author: "Bharani Nittala"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+  openintro::lab_report: default
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+### Overview
+
+The Elo rating system is a method for calculating the relative skill levels of players in zero-sum games such as chess. It is named after its creator Arpad Elo, a Hungarian-American physics professor.The Elo system was originally invented as an improved chess-rating system over the previously used Harkness system, but is also used as a rating system for multi-player competition in a number of video games, American football, basketball and other games.To learn more, please visit [the wiki page here](https://en.wikipedia.org/wiki/Elo_rating_system).
+
+
+### Step 1:Let's load required libraries and raw data
+
+Step 1 is to load the raw data from my github library where we have 64 chess player's details of their performance in a chess tournament. To understand the dataset better, visit the [Youtube link here](https://youtu.be/T5PXYl2FEUo) to hear Professor Andy explain the data schema.
+
+```{r load-data,  results = FALSE}
+
+knitr::opts_chunk$set(eval = TRUE, results = FALSE)
+library(tidyverse) 
+library(readr)
+library(knitr)
+
+chess_table_raw <- read.delim("https://raw.githubusercontent.com/BharaniNittala/DATA-607/master/tournamentinfo.txt", "|",header = FALSE)
+knitr:: kable(head(chess_table_raw,10))
+```
+
+#### But wait, do I need the headers ?
+```{r raw_data_headers,  results = FALSE}
+
+chess_table_mod <- chess_table_raw[-seq(1, NROW(chess_table_raw), by = 3),]
+row.names(chess_table_mod) <- NULL
+chess_table_mod <- chess_table_mod[-(1:2), , drop = FALSE] 
+```
+
+
+### Step 2: Break the task into sub-tasks
+##### 1)Understand data format
+##### 2)Keep only the required parts
+##### 3)Logic to calculate rating
+
+<br />
+
+#### Understand data format
+```{r extract_rows,  results = FALSE}
+
+#Reproducibility of the code, in case in the future the number of rows in the dataset changes. In here we are taking the count of rows in the dataset provided
+len <- nrow(chess_table_mod) 
+even <- seq(0,len,2)
+odd <- seq(1,len,2)
+
+#Merging the datasets on the rowindexes. We need to transpose alternate rows to columns for easy access. But, let's do it in an innovative way!
+chess_table_odd <- chess_table_mod[odd,]
+row.names(chess_table_odd) <- NULL
+chess_table_even <- chess_table_mod[even,]
+row.names(chess_table_even) <- NULL
+chess_table_merged <- transform(merge(chess_table_even[ , c("V1", "V2")], chess_table_odd[,!(colnames(chess_table_odd) %in% c("V1","V11"))], by = 0,all=TRUE))
+
+#Not required to state the column names here, but then it's satisfying to look at this dataset with proper names
+colnames(chess_table_merged) <- c("Player_no","State","Rating","Player_Name","Total_Points","Round_1","Round_2","Round_3","Round_4","Round_5","Round_6","Round_7")
+
+```
+
+
+##### Keep only the required parts
+```{r Split_columns,  results = FALSE}
+
+library(dplyr)
+library(tidyr)
+
+#Separate the Player numbers and their result in this step
+chess_table_v2 <- chess_table_merged %>% separate(Round_1,c("R1_Result", "R1_Player")) %>% separate(Round_2,c("R2_Result", "R2_Player")) %>% separate(Round_3,c("R3_Result", "R3_Player")) %>% separate(Round_4,c("R4_Result", "R4_Player")) %>% separate(Round_5,c("R5_Result", "R5_Player")) %>% separate(Round_6,c("R6_Result", "R6_Player")) %>% separate(Round_7,c("R7_Result", "R7_Player"))
+
+#In here, let's extract previous rating of the player  
+chess_table_v3 <- chess_table_v2  %>% separate(Rating,c("Code", "Ratings"),"R:")
+
+#In here, let's extract previous rating of the player 
+chess_table_v4 <- chess_table_v3  %>% separate(Ratings,c("Pre_Rating", "Post_Rating"),"->")
+
+#We do not need provisional rating for this exercise, but would have been fun if we were to impute based on threshold on certain provisional matches 
+chess_table_v5 <- chess_table_v4  %>% separate(Pre_Rating,c("Pre_Rating", "Provisional_Pre"),"P") %>% separate(Post_Rating,c("Post_Rating", "Provisional_Post"),"P")
+
+# For now, let's curb our enthusiasm to deep dive into provisional 
+chess_table_v5 <- chess_table_v5[, !(colnames(chess_table_v5) %in% c("Provisional_Pre","Provisional_Post","Code"))]
+```
+
+
+#### Understand data format 
+```{r ratings tables,  results = FALSE}
+# Let's take what we need - only the columns required from V5 version from above exercise
+player_rating <- chess_table_v5[,(colnames(chess_table_v5) %in% c("Player_no","Pre_Rating"))]
+
+# Convert the characters to numerics to perform average and other aggregate functions later
+player_rating[] <- lapply(player_rating, function(x) as.numeric(as.character(x)))
+
+# Verify the data type
+str(player_rating)
+
+# Now, sort function will work perfectly!
+player_rating <- player_rating[order(player_rating$Player_no),]
+
+# I will maintain 2 separate data frames. One with ratings and other one with information on opponent players. Then will merge these two to get ratings of opponent players. Think something like 1 fact table and 1 dimension table
+player_opp <- chess_table_v5[ , grepl( "Player" , names( chess_table_v5 ) ) ][,-2]
+player_opp[] <- lapply(player_opp, function(x) as.numeric(as.character(x)))
+
+```
+
+##### Logic to calculate rating
+```{r calculate average,  results = FALSE}
+
+# Obtaining ratings for each of the opponent player from fact table 'player_rating'. This demanded muliple merges. I could have used 'reduce' function but then I had to map to different rows. Something to explore!
+Agg_ratings <-  merge(x= player_opp,y= player_rating, by.x = "R1_Player",by.y = "Player_no", all.x = TRUE) %>% merge(.,y= player_rating, by.x = "R2_Player",by.y = "Player_no", all.x = TRUE) %>% merge(.,y= player_rating, by.x = "R3_Player",by.y = "Player_no", all.x = TRUE)%>% merge(.,y= player_rating, by.x = "R4_Player",by.y = "Player_no", all.x = TRUE) %>% merge(.,y= player_rating, by.x = "R5_Player",by.y = "Player_no", all.x = TRUE)%>% merge(.,y= player_rating, by.x = "R6_Player",by.y = "Player_no", all.x = TRUE)%>% merge(.,y= player_rating, by.x = "R7_Player",by.y = "Player_no", all.x = TRUE)
+
+#Preparing the dataframe to take average across the rows to calculate Elo score
+Avg_ratings <- Agg_ratings[,!(grepl( "_Player" , names( Agg_ratings )))]
+
+#Calculating row means
+Avg_ratings$Mean_Pre_Rating <-rowMeans(Avg_ratings[,-1],na.rm = TRUE)
+
+# Leveraged round_df code from Stackoverflow https://stackoverflow.com/questions/29875914/rounding-values-in-a-dataframe-in-r
+round_df <- function(x, digits) {
+    # round all numeric variables
+    # x: data frame 
+    # digits: number of digits to round
+    numeric_columns <- sapply(x, mode) == 'numeric'
+    x[numeric_columns] <-  round(x[numeric_columns], digits)
+    x
+}
+
+Avg_ratings <- round_df(Avg_ratings,0)[,c("Player_no","Mean_Pre_Rating")]
+
+```
+
+
+### Step 3: Conclusion
+
+```{r Final dataset, results="asis"}
+
+#Stitch together required columns from the tables to generate CSV file
+ Final_data <-  merge(x= chess_table_v5[ , c("Player_no","Player_Name", "State", "Total_Points", "Pre_Rating")],y= Avg_ratings[,c("Player_no","Mean_Pre_Rating")], by = "Player_no")
+
+Final_data$Player_no <- as.numeric(as.character(Final_data$Player_no))
+Final_data$Pre_Rating <- as.numeric(as.character(Final_data$Pre_Rating))
+
+Final_data <- Final_data[order(Final_data$Player_no),]
+knitr:: kable(head(Final_data,10))
+
+#Writing CSV file to the current working directory
+write.csv(Final_data,"Chess_tournament.csv", row.names = FALSE)
+```
+
+
+#### Step 4: The Big question!
+
+
+Using the provided ELO calculation, determine each player’s expected result (number of points),based on his or her pre-tournament rating, and the average pre-tournament rating for all of the player’s opponents. Which player scored the most points relative to his or her expected result?
+
+```{r Elo Score, results="asis"}
+
+#Calculating expected score for the players
+Final_data$Exp_score <- (1 / (1 + 10^((Final_data$Pre_Rating - Final_data$Mean_Pre_Rating)/400)))
+# Assuming The rating of player is updated using the formula rating1 = rating1 + K*(Actual Score – Expected score_ where 'k' weighting factor is assumed as '20'
+Final_data$Exp_pts <-  Final_data$Pre_Rating  + 20*(1-Final_data$Exp_score)
+
+#to compare with final score, let's fetch it from raw data
+
+Final_rating <-  chess_table_v5[ , c( "Player_no","Post_Rating")]
+Final_rating[] <- lapply(Final_rating, function(x) as.numeric(as.character(x)))
+
+Final_datav2 <-merge(x= Final_data,y= Final_rating, by = "Player_no", all.x = TRUE)
+
+Final_datav2$Score_delta <- Final_datav2$Post_Rating - Final_datav2$Exp_pts
+
+Player_beats_odds <- Final_datav2[order(-Final_datav2$Score_delta),][1,]
+knitr:: kable(Player_beats_odds)
+```
+
+### Take a bow "JACOB ALEXANDER LAVALLEY", that's indeed a splendid performance!!
