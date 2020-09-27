@@ -1,0 +1,125 @@
+---
+title: 'Assignment 5: Tidying and Transforming Data'
+author: "Bharani Nittala"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    includes: null
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+### Overview
+
+What does it mean to you, as a passenger to be on a delayed flight ? Yes, the frustration, anxiety and temptation to lodge a complaint is very natural (unless you are like me, who would like to sleep for those few extra minutes). But ever wondered, what it means to the airlines ? 
+
+Recognizing the significant strain placed by flight delays on the U.S. air transportation system, in August 2008 the Federal Aviation Administration (FAA) commissioned five NEXTOR universities (UC Berkeley, MIT, George Mason University, the University of Maryland and Virginia Tech) and the Brattle Group to conduct a comprehensive study on the total delay impact (TDI) in the United States.
+
+In 2007, domestic flight delays were found to cost the U.S. economy $31.2 billion in 2007, including $8.3 billion in direct costs to airlines, $16.7 billion in direct costs to passengers, $2.2 billion from lost demand and $4.0 billion in forgone GDP.[Source:airlines.org ](https://www.airlines.org/data/annual-u-s-impact-of-flight-delays-nextor-report/#:~:text=Increasing%20flight%20delays%20place%20a,fuel%20and%20maintenance%2C%20among%20others.)
+
+Let's pick two airlines specifically and analyze their delay times. 
+
+### Read the CSV dataset
+
+Step 1 is to load the csv from the github library and to load the required R libraries. 
+```{r load-data, message=FALSE}
+knitr::opts_chunk$set(eval = TRUE, results = FALSE)
+
+library(RCurl)
+library(knitr)
+
+
+flights_url <- getURL("https://raw.githubusercontent.com/BharaniNittala/DATA-607/master/flights_dataset.csv") 
+flights_raw <- read.csv(text = flights_url)
+
+knitr:: kable(flights_raw) 
+```
+
+### Tidy the data with tidyr
+
+```{r tidyr, message=FALSE,results="asis"}
+library(tidyverse) 
+
+#Tried 'fill' but somehow it did not work, so have to try rudimentary way  
+airline <- c("ALASKA","ALASKA", "","AM WEST","AM WEST")
+
+flights_raw[1] <- airline
+
+col_name <- colnames(flights_raw)
+tall_raw <- gather(flights_raw,col_name[3:7],key = "Destination",value = "Total_flights", na.rm = TRUE)
+
+# The above step can also be done using pivot_longer() function, let's give it a try
+flights_tall <- pivot_longer(flights_raw,col_name[3:7],names_to = "Destination", values_to = "Total_flights",values_drop_na = TRUE)
+
+flights_tall <- dplyr::rename(flights_tall, Airline = X)
+flights_tall <- dplyr::rename(flights_tall, Status = X.1)
+
+# Let's write the table in quality table
+library(formattable)
+formattable(flights_tall, list(
+  Airline = color_tile("light blue", "orange"),
+  Status = formatter("span", style = x ~ ifelse(x == "delayed", 
+  style(color = "red", font.weight = "bold"), NA)),  
+  Total_flights = color_bar("gray", proportion)))
+
+```
+
+
+### Analysis
+
+To calculate the performance, we need to tweak the table structure a bit to obtain total flights by status. 
+```{r analysis, message=FALSE}
+
+flights_tall_stat <- pivot_wider(flights_tall, names_from = "Status", values_from = "Total_flights")
+flights_tall_stat <- mutate(flights_tall_stat, "Total_flights" = round(flights_tall_stat$delayed+flights_tall_stat$`on time`))
+
+flights_tall_stat <- mutate(flights_tall_stat, "delayed_flights_pct" = round(( flights_tall_stat$delayed / Total_flights ) * 100, 2), "on_time_flights_pct" = round(( flights_tall_stat$`on time` / Total_flights ) * 100, 2) )
+
+
+```
+
+Question 1: Compare the per-city on-time performance for both airlines
+
+```{r city_wise, message=FALSE, fig.show="asis"}
+dodger = position_dodge(width = 0.9)
+ggplot(flights_tall_stat, aes(y=on_time_flights_pct, x=Destination, color=Airline, fill=Airline)) + 
+    geom_bar( stat="identity",position = dodger, color="black")+
+    geom_text(aes(label=on_time_flights_pct),color = "blue",position = dodger,vjust=-0.5)+
+  scale_fill_manual(values = alpha(c("#000000", "#FF5733"))) +
+  ylab("Percentage of On-time Flights")
+
+```
+
+Question 2: Compare the overall on-time performance for both airlines
+
+```{r overall, message=FALSE, fig.show="asis"}
+
+airline_level <- flights_tall_stat[-c(2,6,7)] %>%
+    group_by(Airline) %>% 
+    summarise_each(funs(sum))
+
+airline_level <- mutate(airline_level, "on_time_flights_pct" = round(( airline_level$`on time` / Total_flights ) * 100, 2))
+
+dodger = position_dodge(width = 0.9)
+ggplot(airline_level, aes(y=on_time_flights_pct, x=Airline, color=Airline, fill=Airline)) + 
+    geom_bar( stat="identity",position = dodger, color="black")+
+    geom_text(aes(label=on_time_flights_pct),color = "blue",position = dodger,vjust=-0.5)+
+  scale_fill_manual(values = alpha(c("#000000", "#FF5733"))) +
+  ylab("Percentage of On-time Flights")
+
+
+```
+
+### Conclusion
+
+Question 3: Explain the apparent discrepancy between the per-city and overall performances
+
+We see that on time performance when aggregated at overall airline level shows AM West to be best amonng AM West and Alaska but when we look at by destination, in each of the cases the Alaska flights had better on time performance
+
+Question 4: Provide an interesting paradoxical conclusion
+
+This is because of a phenamenon called "Simpson's Paradox". This happens when one conducts analysis ignoring the confounding variable (here destination). More about [Simpson's Paradox](https://en.wikipedia.org/wiki/Simpson%27s_paradox#:~:text=Simpson's%20paradox%2C%20which%20goes%20by,when%20these%20groups%20are%20combined.)
+
+
+
