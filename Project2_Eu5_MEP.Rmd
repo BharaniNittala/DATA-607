@@ -1,0 +1,138 @@
+---
+title: 'Project 2: Tidying and Transforming Data'
+author: "Bharani Nittala, George Cruz Deschamps"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    includes: null
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+### Overview
+
+As posted by Douglas Barley, the analysis is based on the data on Activities of Members of European Parliament (MEP)
+ [source](https://www.researchgate.net/figure/Parliamentary-activities-of-MEPs-from-the-untidy-right-according-to-the-3-strategies_tbl1_283302189)
+
+### Read the CSV dataset
+
+Step 1 is to load the csv from the github library and to load the required R libraries. 
+```{r load-data, message=FALSE}
+knitr::opts_chunk$set(eval = TRUE, results = FALSE)
+library(tidyverse) 
+library(RCurl)
+library(stringr)
+library(knitr)
+library(openxlsx)
+
+members_raw_url <- getURL("https://raw.githubusercontent.com/BharaniNittala/DATA-607/master/Proj2_Case2.csv") 
+members_raw <- read.csv(text = members_raw_url,na.strings=c("","NA"))
+
+knitr:: kable(members_raw) 
+```
+
+### Tidy the data with tidyr
+
+```{r tidyr, message=FALSE,results="asis"}
+
+#Not all the columns are required. Seelcting only those that make sense fot the analysis
+members_raw_trim <- members_raw[,c(1,2,5)]
+names <- c("Metric","Attendees","Speeches")
+colnames(members_raw_trim) <- names
+
+#We need to use coalesce function to get the name of the cohort in the first column. 
+members_raw_trim <-members_raw_trim %>% mutate(Metric = coalesce(Metric,Attendees))
+members_raw_trim$Speeches <- as.character(as.numeric(members_raw_trim$Speeches))
+
+# Changing the dataset to long format for analysis
+members_raw_trim_v2 <- pivot_longer(members_raw_trim,names[2:3],names_to = "Type", values_to = "Values",values_drop_na = TRUE)
+
+#Applying learnings from previous assignments on regex functions
+library(stringr)
+members_raw_trim_v2$Audience <- sub("[^a-z A-Z]+", "\\1", members_raw_trim_v2$Values) 
+members_raw_trim_v2$Audience[members_raw_trim_v2$Audience ==""] <- NA
+
+#Using fill function to impute date in the missing cases and then using regex functions as per the requirement
+members_raw_trim_v2 <- members_raw_trim_v2 %>% fill(Audience)
+members_raw_trim_v3 <- members_raw_trim_v2  %>% separate(Audience,c("Audience", "Audience_count"),"N=")
+members_raw_trim_v3$Audience_count = as.numeric(str_extract(members_raw_trim_v3$Audience_count, "\\-*\\d+\\.*\\d*"))
+
+#We can clean the data further by removing every 7th row in the dataset (reproducibility)
+members_tall <- members_raw_trim_v3 %>% dplyr::filter(row_number() %% 7 != 1) ## Delete every 7th row starting from 1
+
+#Re-arranging the columns for better understanding of the data
+members_tall <- members_tall[c(4,5,1,2,3)]
+knitr:: kable(members_tall) 
+```
+
+
+### Analysis
+
+#### Compare Speeches to Attendance for each category of Members of European Parliament (Absentees, Public Orators, Pragmatists). 
+```{r analysis, message=FALSE,fig.show="asis"}
+
+members_tall$Values <- round(as.numeric(as.character(members_tall$Values)),0)
+
+dodger = position_dodge(width = 0.9)
+ggplot(members_tall,aes(y=Values, x=Audience,color = Type,  fill = Type)) + 
+    geom_bar( stat="identity",position = dodger, color="black")+
+  facet_grid(.~Metric) +
+    geom_text(aes(label=Values),color = "blue",position = dodger,vjust=-0.5)+
+  scale_fill_manual(values = alpha(c("#FF5733","#000000"))) +
+  ylab("Total Number")+
+  theme(axis.text.x=element_text(angle=45,margin = margin(1, unit = "cm"),vjust =1))
+
+```
+
+
+But above graph doesn't make sense as the values from 'Attendees' are way higher than 'Speeches' as one may expect. Let's draw each of them separately and then analyze
+
+
+Let's first understand 'Attendees' distribution among the different EU MEP
+
+```{r analysis2, message=FALSE,fig.show="asis"}
+
+
+dodger = position_dodge(width = 0.9)
+ggplot(subset(members_tall,members_tall$Type=="Attendees"),aes(y=Values, x=Audience,  fill = Audience)) + 
+    geom_bar( stat="identity",position = dodger, color="black")+
+  facet_grid(.~Metric) +
+    geom_text(aes(label=Values),color = "blue",position = dodger,vjust=-0.5)+
+  scale_fill_manual(values = alpha(c("#FF5733","#000000","#ADD8E6"))) +
+  ylab("Number of Attendees")+
+  theme(axis.text.x=element_text(angle=45,margin = margin(1, unit = "cm"),vjust =1))
+
+```
+
+We see that there are very high number of attendees from Absentees whereas the number of attendees are comparable for Pragmatists and Public Orators. This insight is obtained from comparable mean and median values in the chart. Also, if we observe closely the standard deviation of Public Orators attendees is relatively higher than Pragmatists. Something, we need to keep in mind if we want to compare these two cohorts. Now, let's look at speeches. 
+
+```{r analysis3, message=FALSE,fig.show="asis"}
+
+
+dodger = position_dodge(width = 0.9)
+ggplot(subset(members_tall,members_tall$Type=="Speeches"),aes(y=Values, x=Audience,  fill = Audience)) + 
+    geom_bar( stat="identity",position = dodger, color="black")+
+  facet_grid(.~Metric) +
+    geom_text(aes(label=Values),color = "blue",position = dodger,vjust=-0.5)+
+  scale_fill_manual(values = alpha(c("#FF5733","#000000","#ADD8E6"))) +
+  ylab("Number of Speeches")+
+  theme(axis.text.x=element_text(angle=45,margin = margin(1, unit = "cm"),vjust =1))
+
+```
+
+Interestingly, the number of speeches are way higher for Pragmatists and Public Orators compared to number of attendees. Possibly, the meetings are held in smaller groups. Among all the three cohorts, Pragmatists conduct the highest number of speeches and their 50th percentile value is atleast 80% higher than remaining two cohorts. S-D higher than mean shows that there is very high variability in the number of speeches for Pragmatists and Public Orators.
+
+### Conclusion
+
+There seems to be inverse correlation between the number of attendees and speeches among the three groups Absentees, Pragmatists and Public Orators. Let's confirm this hypothesis by calculating correlation value between attendees and speeches. 
+
+```{r correlation, message=FALSE,results="asis"}
+
+members_tall_corr <- pivot_wider(members_tall, names_from = "Type", values_from = "Values")
+
+cor(members_tall_corr$Attendees, members_tall_corr$Speeches, method = c("pearson"))
+
+```
+
+We see a strong negative correlation value (-73%) between the metrics which proves the hypothesis. 

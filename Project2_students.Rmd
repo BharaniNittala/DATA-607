@@ -1,0 +1,110 @@
+---
+title: 'Project 2: Tidying and Transforming Data'
+author: "Bharani Nittala, George Cruz Deschamps"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    includes: null
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+### Overview
+
+As posted by Donghwan Kim, the analysis is based on the data on students living on and off campus [source]( https://libguides.library.kent.edu/SPSS/Crosstabs).
+
+### Read the CSV dataset
+
+Step 1 is to load the csv from the github library and to load the required R libraries. 
+```{r load-data, message=FALSE}
+knitr::opts_chunk$set(eval = TRUE, results = FALSE)
+library(tidyverse) 
+library(RCurl)
+library(stringr)
+library(knitr)
+library(openxlsx)
+
+campus_raw_url <- getURL("https://raw.githubusercontent.com/BharaniNittala/DATA-607/master/Proj2_Case1.csv") 
+campus_raw <- read.csv(text = campus_raw_url,na.strings=c("","NA"))
+
+knitr:: kable(campus_raw) 
+```
+
+### Tidy the data with tidyr
+
+```{r tidyr, message=FALSE,results="asis"}
+
+names <- c("Residence","Class_Rank","Class","Off_campus","On_campus","Total")
+colnames(campus_raw) <- names
+
+#Selecting only the columns that are required and applying fill function to impute missing values
+campus_raw_v2 <- campus_raw[c(-1,-4,-7,-10),c(-2,-6)]
+campus_raw_v2 <- campus_raw_v2 %>% fill(Residence)
+
+
+campus_tall <- pivot_longer(campus_raw_v2,names[4:5],names_to = "Campus", values_to = "Students",values_drop_na = TRUE)
+
+```
+
+
+### Analysis
+
+#### Write code to quantify change in student's residency as class rank goes up (by state and by on- and off-campus) 
+```{r analysis, message=FALSE,fig.show="asis"}
+
+campus_tall$Students <- as.numeric(as.character(campus_tall$Students))
+campus_tall_v2 <- campus_tall[,-3] %>% group_by(Class,Residence) %>% summarise(Grouped_students = sum(Students))
+campus_tall_v2_stat <- pivot_wider(campus_tall_v2, names_from = "Residence", values_from = "Grouped_students")
+
+campus_tall_v2_stat <- mutate(campus_tall_v2_stat, "OOS_pct" = round(( `Out of state` / Total ) * 100, 2), "IS_pct" = round(( `In state` / Total ) * 100, 2) ) 
+
+
+dodger = position_dodge(width = 0.9)
+ggplot(campus_tall_v2_stat, aes(y=OOS_pct, x=Class,  fill = Class)) + 
+    geom_bar( stat="identity",position = dodger, color="black")+
+    geom_text(aes(label=OOS_pct),color = "blue",position = dodger,vjust=-0.5)+
+  scale_fill_manual(values = alpha(c("#000000", "#FF5733"))) +
+  ylab("Percentage of Out of State")
+
+dodger = position_dodge(width = 0.9)
+ggplot(campus_tall_v2_stat, aes(y=IS_pct, x=Class,  fill = Class)) + 
+    geom_bar( stat="identity",position = dodger, color="black")+
+    geom_text(aes(label=IS_pct),color = "blue",position = dodger,vjust=-0.5)+
+  scale_fill_manual(values = alpha(c("#000000", "#FF5733"))) +
+  ylab("Percentage of In State")
+
+```
+
+We see that as the class progresses (underclass to upperclass), more studets stay out of state 
+
+#### Find Student's choice pattern of on- and off-campus by state and class rank. 
+```{r city_wise, message=FALSE, fig.show="asis"}
+
+campus_tall_v3 <- campus_tall %>% group_by(Class,Residence,Campus) %>% summarise(Grouped_students = sum(Students))
+campus_tall_v3_stat <- pivot_wider(campus_tall_v3, names_from = "Residence", values_from = "Grouped_students")
+campus_tall_v3_stat <- mutate(campus_tall_v3_stat, "OOS_pct" = round(( `Out of state` / Total ) * 100, 2), "IS_pct" = round(( `In state` / Total ) * 100, 2) ) 
+
+dodger = position_dodge(width = 0.9)
+ggplot(campus_tall_v3_stat, aes(y=OOS_pct, x=Class, color=Campus, fill=Campus)) + 
+    geom_bar( stat="identity",position = dodger, color="black")+
+    geom_text(aes(label=OOS_pct),color = "blue",position = dodger,vjust=-0.5)+
+  scale_fill_manual(values = alpha(c("#000000", "#FF5733"))) +
+  ylab("Percentage of Out of State")
+
+dodger = position_dodge(width = 0.9)
+ggplot(campus_tall_v3_stat, aes(y=IS_pct,x =Class, color=Campus, fill=Campus)) + 
+    geom_bar( stat="identity",position = dodger, color="black")+
+    geom_text(aes(label=IS_pct),color = "blue",position = dodger,vjust=-0.5)+
+  scale_fill_manual(values = alpha(c("#000000", "#FF5733"))) +
+  ylab("Percentage of In State")
+
+
+```
+
+We see that as the class progresses (underclass to upperclass), more studets stay out of state from previous graph. Now, when we look deeper into the 'underclass 'Out of State', we see that underclassman prefer on-campus more than off-campus and reverse trend for upperclassman where they prefer off-campus. When we look into 'In State' residence, Underclassman slightly prefer off-campus more than on-campus compared to upperclassman where their preference is to stay on-campus when 'In state'.
+
+
+### Conclusion
+
+We see interesting choice of on-campus and off-campus when in-state and out of statement among the underclassman and upperclassman. I would have combined this dataset with tuition fees and hostel fees to understand the behavior furthermore. 
