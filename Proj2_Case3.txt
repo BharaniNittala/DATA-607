@@ -1,0 +1,27 @@
+Line	Name	Q2 2020	Q1 2020	Q2 2019
+1	Gross domestic product	19,520.114	21,561.139	21,329.877
+2 	Personal consumption expenditures	13,097.348	14,545.460	14,497.320
+3 	Goods	4,361.518	4,552.919	4,517.679
+4	Durable goods	1,478.299	1,496.444	1,535.984
+5	Nondurable goods	2,883.219	3,056.474	2,981.695
+6	Services	8,735.830	9,992.541	9,979.641
+7	Gross private domestic investment	3,128.603	3,675.871	3,739.658
+8	Fixed investment	3,426.959	3,727.988	3,686.598
+9	Nonresidential	2,646.791	2,859.285	2,891.333
+10	Structures	584.007	648.654	649.683
+11	Equipment	1,057.197	1,181.562	1,243.127
+12	Intellectual property products	1,005.587	1,029.069	998.523
+13	Residential	780.168	868.702	795.265
+14	Change in private inventories	-298.356	-52.117	53.060
+15	Net exports of goods and services	-545.164	-494.307	-644.744
+16	Exports	1,788.166	2,438.710	2,514.644
+17	Goods	1,135.103	1,599.009	1,631.122
+18	Services	653.063	839.701	883.522
+19	Imports	2,333.329	2,933.016	3,159.388
+20	Goods	1,927.785	2,377.882	2,556.362
+21	Services	405.544	555.134	603.026
+22	Government consumption expenditures and gross investment	3,839.326	3,834.115	3,737.643
+23	Federal	1,504.782	1,452.551	1,410.626
+24	National defense	876.454	873.780	844.251
+25	Nondefense	628.328	578.771	566.375
+26	State and local	2,334.544	2,381.563	2,327.018
