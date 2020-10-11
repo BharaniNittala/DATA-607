@@ -1,0 +1,26 @@
+<books>
+	<book1>
+		<Title>The Heartfulness Way</Title>
+		<Author>Kamlesh D Patel and Joshua Pollock</Author>
+		<Published_date>1/16/2018</Published_date>
+		<Languages_available>English, Hindi, Tamil, Malayalam, Gujarati, Kannada, Marathi</Languages_available>
+		<Available_on_Amazon>Yes</Available_on_Amazon>
+		<Price>$11.39</Price>
+	</book1>
+	<book2>
+		<Title>The Outliers</Title>
+		<Author>Malcolm Gladwell</Author>
+		<Published_date>11/18/2008</Published_date>
+		<Languages_available>English</Languages_available>
+		<Available_on_Amazon>Yes</Available_on_Amazon>
+		<Price>$17.95</Price>
+	</book2>
+	<book3>
+		<Title>The Challenger Sale</Title>
+		<Author>Brent Adamson and Matthew Dixon</Author>
+		<Published_date>11/10/2011</Published_date>
+		<Languages_available>English</Languages_available>
+		<Available_on_Amazon>Yes</Available_on_Amazon>
+		<Price>$21.00</Price>
+	</book3>
+</books>
