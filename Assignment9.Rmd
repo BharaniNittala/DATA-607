@@ -1,0 +1,94 @@
+---
+title: 'Assignment 9: Web APIs'
+author: "Bharani Nittala"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    includes: null
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+### Overview
+
+The New York Times web site provides a rich set of APIs, as described here: https://developer.nytimes.com/apis. I selected 'Movie Reviews' API for this purpose.   
+
+
+### Load required libraries
+
+Step 1 is to install and load required libraries to extract data from API
+
+```{r libraries, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(eval = TRUE, results = FALSE)
+library(tidyverse)
+library(dplyr)
+library(httr)
+library(jsonlite)
+library(kableExtra)
+library(glue)
+library(rmarkdown)
+
+```
+
+### Connect to the API
+
+Raw data looks like this:
+```{r , message=FALSE,echo= FALSE}
+apikey <- 'JCzbi47kjdS5QtTfarLOCJEkeb6g5is0'
+```
+
+
+
+```{r , message=FALSE,results="asis"}
+#Interface to read the JSON data
+url <- paste("https://api.nytimes.com/svc/movies/v2/reviews/search.json?query=&api-key=",apikey, sep='')
+
+#Convert JSON to r dataframe
+raw_data<- fromJSON(url, flatten = TRUE) %>% data.frame()
+```
+
+
+### Read Data
+
+```{r read, message=FALSE,results="asis"}
+#raw_data %>% kable() %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), fixed_thead = T)
+paged_table(raw_data, options = list(rows.print = 5))
+
+```
+
+Let's fetch title and review from this data and analyze it. 
+
+```{r , message=FALSE,results="asis"}
+data_final <- raw_data %>% select(results.display_title,results.headline,results.critics_pick,results.byline)
+new_names <- c('Title','Review','Critics_pick','Reviewer')
+colnames(data_final) <- new_names
+```
+
+
+### Analysis
+
+We now have a list of movies that are critically acclaimed that we can add to our list
+```{r , message=FALSE,results="asis"}
+
+#In here, let's extract only the review from the text  
+data_final <- data_final  %>% separate(Review,c("Title_again", "Review"),"Review:")
+data_final <- data_final %>% select(Title,Review,Critics_pick,Reviewer)
+data_final %>% kable() %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), fixed_thead = T)
+
+```
+
+
+### Conclusion
+
+Ever wondered though if there could a reviewers bias? For example, my wife likes every movie she watches whereas it's hard to impress me unless there's depth in the story. Could there be bias among the reviewers as well ?
+
+```{r compare, message=FALSE,results="asis"}
+
+Critics <- data_final %>% group_by(Reviewer) %>% summarise(All_movies = n(),Acclaimed = sum(Critics_pick))
+Critics_review <- Critics %>% filter(All_movies>1) %>% group_by(Reviewer) %>% summarise(acclaim_rate = round(Acclaimed/All_movies *100,0))
+
+Critics_review %>% kable() %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed"), fixed_thead = T)
+```
+
+#### Seems like Ben is like me who is hard to impress whereas Glenn is more easy to impress. It's purely an hypothesis, for detailed analysis the confounding variables like movie genre, movie cast and other variables are required. Also, definitely more than 20 sample data points!
