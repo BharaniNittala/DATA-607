@@ -1,0 +1,78 @@
+---
+title: 'Assignment 11: Recommendation Engine'
+author: "Bharani Nittala"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    includes: null
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+### Problem Statement
+
+Your task is to analyze an existing recommender system that you find interesting.  You should:
+
+1) Perform a Scenario Design analysis as described below.  Consider whether it makes sense for your selected recommender system to perform scenario design twice, once for the organization (e.g. Amazon.com) and once for the organization's customers.
+\n
+2) Attempt to reverse engineer what you can about the site, from the site interface and any available information that you can find on the Internet or elsewhere.
+\n
+3) Include specific recommendations about how to improve the site's recommendation capabilities going forward. 
+\n
+4) Create your report using an R Markdown file, and create a discussion thread with a link to the GitHub repo where your Markdown file notebook resides.  You are not expected to need to write code for this discussion assignment.
+
+### Netflix as a recommendation engine
+Netflix, Inc. is an American technology and media services provider and production company headquartered in Los Gatos, California. Netflix was founded in 1997 by Reed Hastings and Marc Randolph in Scotts Valley, California.Around 80% of Netflix users take the streaming service’s title recommendations offered by its algorithm. It must be that efficient! Click [here](https://www.comparitech.com/blog/vpn-privacy/netflix-statistics-facts-figures/#:~:text=40.,recommendations%20offered%20by%20its%20algorithm) for the source.
+
+```{r , results="asis", echo=FALSE}
+
+knitr::include_graphics("https://miro.medium.com/max/1272/1*ExSkgz1P8w0QPXG_rwG-Xw.png")
+```
+
+ 
+### Scenario design
+
+* Who are the target users of the site?
+Target users of the site are those who want to stream videos on demand. In other words, the streamers who want to leverage OTT (over the top) platforms to watch TV shows/movies/documentaries and other content online. 
+
+* What are their key goals?
+Users want to watch their favorite shows available on the site. Users may also want to browse through the site to watch a new show based on the recommendations provided by the site. Users at the end, want to find the right content at the right time on the site. 
+
+* How can the site help the users accomplish their goals?
+Site provides users recommendations based on the previous streaming history and also based on demographic features. Site can help the users accomplish the goals by ensuring the platform is easy to use and seamless with no/less interruptions.
+
+### How Netflix recommendation engine works ?
+
+Netflix shares following information regarding their recommendation engine on their [site](https://help.netflix.com/en/node/100639) 
+Your interactions with our service (such as your viewing history and how you rated other titles),other members with similar tastes and preferences on our service, and information about the titles, such as their genre, categories, actors, release year, etc.
+
+In addition to knowing what you have watched on Netflix, to best personalize the recommendations we also look at things like:
+
+* the time of day you watch,
+
+* the devices you are watching Netflix on, and
+
+* how long you watch.
+
+In addition to choosing which titles to include in the rows on your Netflix homepage, our system also ranks each title within the row, and then ranks the rows themselves, using algorithms and complex systems to provide a personalized experience. To put this another way, when you look at your Netflix homepage, our systems have ranked titles in a way that is designed to present the best possible ordering of titles that you may enjoy.
+
+### Ways to improve recommendation engine
+
+One way to improve the algorithm is to introduce **homophily theory** on top of current recommendation systems.
+Homophily is the principle that a contact between similar people occurs at a higher rate than among dissimilar people. The pervasive fact of homophily means that cultural, behavioral, genetic, or material information that flows through networks will tend to be localized. Homophily implies that distance in terms of social characteristics translates into network distance, the number of relationships through which a piece of information must travel to connect two individuals. It
+also implies that any social entity that depends to a substantial degree on networks for its transmission will tend to be localized in social space and will obey certain fundamental dynamics as it interacts with other social entities in an ecology of social forms.[source](http://aris.ss.uci.edu/~lin/52.pdf)
+
+
+```{r , results="asis", echo=FALSE}
+
+knitr::include_graphics("https://i.pinimg.com/originals/84/50/45/845045d957b5f55991b9eee91c6a4b1f.jpg")
+```
+
+
+https://i.pinimg.com/originals/84/50/45/845045d957b5f55991b9eee91c6a4b1f.jpg
+
+
+
+
+
